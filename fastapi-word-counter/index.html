@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AI Conversational Assistant & Jargon Translator with LangChain Message History." />
+  <title>AI Conversational Assistant | Context-Aware Chat & Translator</title>
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ==========================================================================
+       CSS Variables & Design Tokens
+       ========================================================================== */
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #030712 100%);
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --card-glow: rgba(99, 102, 241, 0.15);
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+      --primary-glow: rgba(99, 102, 241, 0.4);
+      
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-cyan: #06b6d4;
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-heading: 'Outfit', var(--font-body);
+      
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Reset & Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg-gradient);
+      font-family: var(--font-body);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1.25rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background glow effects */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.08) 40%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .badge-group {
+      display: flex;
+      justify-content: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      letter-spacing: 0.02em;
+    }
+
+    .session-badge {
+      background: rgba(6, 182, 212, 0.12);
+      border-color: rgba(6, 182, 212, 0.3);
+      color: #67e8f9;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .title {
+      font-family: var(--font-heading);
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.75rem;
+    }
+
+    .title span {
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    /* Main Card */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      transition: var(--transition);
+    }
+
+    .input-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .input-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .shortcut-hint {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .textarea-wrapper {
+      position: relative;
+    }
+
+    textarea {
+      width: 100%;
+      height: 110px;
+      padding: 1rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 90px;
+      max-height: 250px;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    textarea::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* Example chips */
+    .chips-section {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .chips-label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-right: 0.25rem;
+      font-weight: 500;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      padding: 0.28rem 0.7rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .chip:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #e0e7ff;
+      transform: translateY(-1px);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    /* Action button */
+    .btn-translate {
+      flex: 1;
+      padding: 0.95rem 1.5rem;
+      border: none;
+      border-radius: var(--radius-md);
+      background: var(--primary-gradient);
+      color: #ffffff;
+      font-family: var(--font-heading);
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      box-shadow: 0 8px 24px var(--primary-glow);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-translate:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(99, 102, 241, 0.55);
+      filter: brightness(1.08);
+    }
+
+    .btn-translate:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-translate:disabled {
+      opacity: 0.75;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-reset {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #94a3b8;
+      padding: 0.95rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-reset:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #f8fafc;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-translate.loading .spinner {
+      display: inline-block;
+    }
+
+    /* Output Section */
+    .output-section {
+      margin-top: 1.75rem;
+      display: none;
+      animation: fadeIn 0.35s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .output-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      position: relative;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.85rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .output-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #818cf8;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .turn-badge {
+      font-size: 0.72rem;
+      background: rgba(99, 102, 241, 0.2);
+      color: #c7d2fe;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+
+    .btn-copy {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: var(--transition);
+    }
+
+    .btn-copy:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .output-content {
+      font-size: 0.98rem;
+      line-height: 1.7;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* History dialogue log */
+    .history-log {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .history-bubble {
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .bubble-user {
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      align-self: flex-end;
+      color: #e0e7ff;
+      max-width: 85%;
+    }
+
+    .bubble-ai {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      align-self: flex-start;
+      color: #f1f5f9;
+      max-width: 95%;
+      white-space: pre-wrap;
+    }
+
+    .bubble-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: #818cf8;
+    }
+
+    .bubble-user .bubble-label {
+      color: #a5b4fc;
+    }
+
+    /* Error alert */
+    .error-card {
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 1.75rem;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .footer a {
+      color: #818cf8;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="badge-group">
+        <div class="badge" id="serverBadge">
+          <span class="status-dot"></span>
+          <span id="serverStatusText">FastAPI Backend Connected</span>
+        </div>
+        <div class="badge session-badge" id="sessionBadge">
+          <span>🧠 Session:</span>
+          <strong id="sessionBadgeText">sports-session</strong>
+        </div>
+      </div>
+      <h1 class="title">AI Conversational <span>Assistant</span></h1>
+      <p class="subtitle">Context-aware conversational AI with LangChain Message History persistence.</p>
+    </header>
+
+    <!-- Main Card -->
+    <main class="card">
+      <div class="input-group">
+        <div class="input-label-row">
+          <label for="jargonInput" class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Ask a Question or Jargon
+          </label>
+          <span class="shortcut-hint">Press <strong>Ctrl/⌘ + Enter</strong> to send</span>
+        </div>
+        <div class="textarea-wrapper">
+          <textarea 
+            id="jargonInput" 
+            placeholder="e.g. Tell me about football., What about number 9?, Who is a famous player associated with that role?..."
+            autofocus
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Quick Examples -->
+      <div class="chips-section">
+        <span class="chips-label">Try context sequence:</span>
+        <button type="button" class="chip" data-text="Tell me about football.">1. Tell me about football.</button>
+        <button type="button" class="chip" data-text="What about number 9?">2. What about number 9?</button>
+        <button type="button" class="chip" data-text="Who is a famous player associated with that role?">3. Who is a famous player associated with that role?</button>
+        <button type="button" class="chip" data-text="Kubernetes Container Orchestration">Kubernetes</button>
+      </div>
+
+      <!-- Submit & Reset Buttons -->
+      <div class="btn-row">
+        <button type="button" id="translateBtn" class="btn-translate">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="btn-text">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; vertical-align:middle; margin-right:4px;">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            Send Message
+          </span>
+        </button>
+        <button type="button" id="resetBtn" class="btn-reset" title="Start a fresh session with new history">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          New Chat
+        </button>
+      </div>
+
+      <!-- Output Section -->
+      <div id="outputSection" class="output-section">
+        <div class="output-card">
+          <div class="output-header">
+            <span class="output-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              Conversation History
+              <span id="turnBadge" class="turn-badge">Turn 1</span>
+            </span>
+            <button type="button" id="copyBtn" class="btn-copy">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy Latest
+            </button>
+          </div>
+          <div id="historyLog" class="history-log"></div>
+          <div id="output" class="output-content" style="display:none;"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      Powered by <strong>FastAPI</strong> & <strong>LangChain Message History</strong> • <a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer">View API Docs</a>
+    </footer>
+  </div>
+
+  <!-- Vanilla JavaScript Logic -->
+  <script>
+    // DOM Elements
+    const jargonInput = document.getElementById('jargonInput');
+    const translateBtn = document.getElementById('translateBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const btnText = translateBtn.querySelector('.btn-text');
+    const outputSection = document.getElementById('outputSection');
+    const output = document.getElementById('output');
+    const historyLog = document.getElementById('historyLog');
+    const turnBadge = document.getElementById('turnBadge');
+    const copyBtn = document.getElementById('copyBtn');
+    const chips = document.querySelectorAll('.chip');
+    const serverBadge = document.getElementById('serverBadge');
+    const serverStatusText = document.getElementById('serverStatusText');
+    const sessionBadgeText = document.getElementById('sessionBadgeText');
+
+    const API_BASE_URL = 'http://localhost:8000';
+
+    // 1. Session Management: Maintain persistent session ID across consecutive messages
+    // Use sports-session as default to align directly with terminal demonstration
+    let sessionId = sessionStorage.getItem('active_session_id') || 'sports-session';
+    sessionStorage.setItem('active_session_id', sessionId);
+    sessionBadgeText.textContent = sessionId;
+
+    let turnCount = 0;
+    let latestResponseText = '';
+
+    // Reset / New session handler
+    resetBtn.addEventListener('click', () => {
+      sessionId = 'session-' + Date.now();
+      sessionStorage.setItem('active_session_id', sessionId);
+      sessionBadgeText.textContent = sessionId;
+      turnCount = 0;
+      historyLog.innerHTML = '';
+      output.textContent = '';
+      latestResponseText = '';
+      outputSection.style.display = 'none';
+      jargonInput.value = '';
+      jargonInput.focus();
+    });
+
+    // 2. Health check to visually indicate server connectivity
+    async function checkServerHealth() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/health`);
+        if (res.ok) {
+          serverBadge.style.display = 'inline-flex';
+          serverStatusText.textContent = 'FastAPI Backend Online';
+        }
+      } catch (err) {
+        serverStatusText.textContent = 'Server Offline (Check localhost:8000)';
+        serverBadge.style.borderColor = 'rgba(244, 63, 94, 0.4)';
+        serverBadge.style.background = 'rgba(244, 63, 94, 0.1)';
+        serverBadge.querySelector('.status-dot').style.backgroundColor = '#f43f5e';
+        serverBadge.querySelector('.status-dot').style.boxShadow = '0 0 8px #f43f5e';
+      }
+    }
+    checkServerHealth();
+
+    // 3. Chip click fills input
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        jargonInput.value = chip.getAttribute('data-text');
+        jargonInput.focus();
+      });
+    });
+
+    // 4. Translate / Send Message Handler
+    async function handleTranslate() {
+      const text = jargonInput.value.trim();
+
+      if (!text) {
+        jargonInput.focus();
+        jargonInput.style.borderColor = '#f43f5e';
+        setTimeout(() => {
+          jargonInput.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+        }, 1200);
+        return;
+      }
+
+      setLoading(true);
+
+      // Append user bubble to chat history immediately
+      turnCount += 1;
+      appendUserBubble(text);
+      jargonInput.value = '';
+
+      try {
+        // Send POST request with JSON payload containing jargon, input, and persistent session_id
+        const response = await fetch(`${API_BASE_URL}/translate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            jargon: text,
+            input: text,
+            session_id: sessionId
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || `Server error: HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const responseText = data.response || data.translation || 'No response returned.';
+        latestResponseText = responseText;
+        output.textContent = responseText;
+
+        if (data.history_length) {
+          turnBadge.textContent = `Turn ${Math.ceil(data.history_length / 2)} (History: ${data.history_length} msgs)`;
+        } else {
+          turnBadge.textContent = `Turn ${turnCount}`;
+        }
+
+        appendAIBubble(responseText, data.token_usage);
+
+      } catch (error) {
+        displayError(error.message || 'Failed to connect to the backend server.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // 5. Bubble Rendering
+    function appendUserBubble(text) {
+      outputSection.style.display = 'block';
+      const bubble = document.createElement('div');
+      bubble.className = 'history-bubble bubble-user';
+      bubble.innerHTML = `
+        <div class="bubble-label">You</div>
+        <div>${escapeHtml(text)}</div>
+      `;
+      historyLog.appendChild(bubble);
+      outputSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function appendAIBubble(text, tokenUsage) {
+      const bubble = document.createElement('div');
+      bubble.className = 'history-bubble bubble-ai';
+      
+      let tokenPillHtml = '';
+      if (tokenUsage && tokenUsage.total_tokens) {
+        tokenPillHtml = `
+          <div style="margin-top: 0.6rem; padding-top: 0.45rem; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.4rem;">
+            <span>⚡ <strong>${tokenUsage.total_tokens}</strong> total tokens</span>
+            <span style="color: #64748b;">•</span>
+            <span>${tokenUsage.prompt_tokens} prompt</span>
+            <span style="color: #64748b;">•</span>
+            <span>${tokenUsage.completion_tokens} completion</span>
+          </div>
+        `;
+      }
+
+      bubble.innerHTML = `
+        <div class="bubble-label">AI Assistant</div>
+        <div class="output-content">${escapeHtml(text)}</div>
+        ${tokenPillHtml}
+      `;
+      historyLog.appendChild(bubble);
+      outputSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function escapeHtml(string) {
+      const div = document.createElement('div');
+      div.textContent = string;
+      return div.innerHTML;
+    }
+
+    // 6. Loading State Toggle
+    function setLoading(isLoading) {
+      if (isLoading) {
+        translateBtn.disabled = true;
+        translateBtn.classList.add('loading');
+        btnText.textContent = 'Thinking...';
+      } else {
+        translateBtn.disabled = false;
+        translateBtn.classList.remove('loading');
+        btnText.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; vertical-align:middle; margin-right:4px;">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+          Send Message
+        `;
+      }
+    }
+
+    // 7. Display Error
+    function displayError(errorMessage) {
+      outputSection.style.display = 'block';
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-card';
+      errorDiv.innerHTML = `
+        <strong>Request Failed:</strong> ${escapeHtml(errorMessage)}<br/>
+        <small style="color:#fecdd3;">Ensure the FastAPI backend is running on <code>http://localhost:8000</code>.</small>
+      `;
+      historyLog.appendChild(errorDiv);
+      outputSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // 8. Copy to Clipboard
+    copyBtn.addEventListener('click', async () => {
+      const textToCopy = latestResponseText || output.textContent;
+      if (!textToCopy) return;
+
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        const originalHtml = copyBtn.innerHTML;
+        copyBtn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Copied!
+        `;
+        setTimeout(() => {
+          copyBtn.innerHTML = originalHtml;
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy: ', err);
+      }
+    });
+
+    // 9. Event Listeners (Click & Keyboard Shortcut)
+    translateBtn.addEventListener('click', handleTranslate);
+
+    jargonInput.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleTranslate();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# Environments & Secrets
+.env
+.env.*
+*.env
+!.env.example
+venv/
+.venv/
+env/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Databases & Vector DBs
+**/chroma_db/
+*.sqlite3
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Editor & IDE Configs
+.vscode/
+.idea/
+*.swp
+*.swo

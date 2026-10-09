@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LexiRecon — High-Fidelity Legal Document Reconstructor & Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.0">
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-icon">⚖️</div>
+      <div>
+        <h1 class="brand-title">LexiRecon</h1>
+        <div class="brand-subtitle">High-Fidelity Legal PDF Reconstructor</div>
+      </div>
+    </div>
+
+    <!-- Center Stats & Status -->
+    <div class="doc-status-badge">
+      <span id="doc-title" style="font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
+      <span id="doc-type-badge" class="badge-tag badge-digital">DIGITAL</span>
+    </div>
+
+    <div class="fidelity-stats">
+      <div class="stat-chip">
+        <span class="stat-label">Pages</span>
+        <span class="stat-value" id="stat-pages">1 → 1</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-label">Text Recovery</span>
+        <span class="stat-value" id="stat-text-rec">100.0%</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-label">Layout Sim.</span>
+        <span class="stat-value" id="stat-layout-sim">99.4%</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-label">Visual Sim.</span>
+        <span class="stat-value" id="stat-visual-sim">100.0%</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-label">Elements</span>
+        <span class="stat-value" id="stat-elements">36</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-label">Mismatches</span>
+        <span class="stat-value" id="stat-mismatches" style="color: var(--accent-green);">0</span>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <div class="overlay-slider-box" id="overlay-slider-box" style="display: none;">
+        <span>Diff Opacity:</span>
+        <input type="range" id="overlay-opacity-slider" class="slider" min="0" max="1" step="0.05" value="0.5">
+      </div>
+      <label class="header-toggle-chip" title="Ignore pen handwriting (blue, gel, ballpoint) and extract clean blank template">
+        <input type="checkbox" id="header-ignore-pen" checked />
+        <span>✍️ Clean Blank Template (Ignore Pen)</span>
+      </label>
+      <button class="btn btn-gold" id="btn-mode-side" title="Side-by-side comparison mode">Side-by-Side</button>
+      <button class="btn" id="btn-mode-overlay" title="Visual Diff / Overlay alignment mode">Overlay Diff</button>
+      <button class="btn btn-icon" id="btn-undo" title="Undo (Ctrl+Z)">↩️ Undo</button>
+      <button class="btn btn-icon" id="btn-redo" title="Redo (Ctrl+Y)">↪️ Redo</button>
+      <button class="btn btn-primary" id="btn-export-pdf" title="Export ready-to-print vector PDF">📥 Export PDF</button>
+      <button class="btn btn-primary" id="btn-export-docx" title="Export editable Word document">📝 Export DOCX</button>
+      <button class="btn btn-icon" id="btn-print" title="Print document directly">🖨️ Print</button>
+      <button class="btn btn-danger btn-icon" id="btn-delete-doc" title="Wipe document from local memory (Privacy Compliance)">🗑️</button>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Layout -->
+  <main class="app-container" id="app-layout">
+    
+    <!-- LEFT SIDEBAR: Upload, Smart Fields, Search & Replace -->
+    <aside class="left-sidebar">
+      
+      <!-- Upload Section -->
+      <section class="sidebar-section">
+        <div class="section-title">
+          <span>Upload PDF or Document Image</span>
+        </div>
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="pdf-file-input" accept="application/pdf,image/png,image/jpeg,image/webp,image/tiff,image/bmp" style="display: none;" />
+          <div class="upload-icon">📄🖼️</div>
+          <div class="upload-text">Click or Drag & Drop PDF / Image</div>
+          <div class="upload-hint">Supports PDF, PNG, JPG, JPEG, WEBP, TIFF, BMP</div>
+        </div>
+      </section>
+
+      <!-- Pre-built Legal Samples -->
+      <section class="sidebar-section">
+        <div class="section-title">
+          <span>Legal Template Samples</span>
+        </div>
+        <div class="sample-buttons">
+          <button class="sample-btn" data-sample="affidavit">
+            <span>📜</span>
+            <div>
+              <div style="font-weight:600;">Court Affidavit (Suit 452)</div>
+              <div style="font-size:0.68rem; color:var(--text-muted);">Court header, underlines, case & party blanks</div>
+            </div>
+          </button>
+          <button class="sample-btn" data-sample="rental">
+            <span>📑</span>
+            <div>
+              <div style="font-weight:600;">Residential Lease (2 Pages)</div>
+              <div style="font-size:0.68rem; color:var(--text-muted);">Multi-page, terms table, bracketed tokens</div>
+            </div>
+          </button>
+          <button class="sample-btn" data-sample="scanned">
+            <span>🖨️</span>
+            <div>
+              <div style="font-weight:600;">Scanned Power of Attorney</div>
+              <div style="font-size:0.68rem; color:var(--text-muted);">Rasterized scan test with OCR reconstruction</div>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- Smart Fillable Fields -->
+      <section class="sidebar-section">
+        <div class="section-title">
+          <span>Smart Fields (<span id="field-count">0</span>)</span>
+        </div>
+        <div class="field-list" id="field-list">
+          <!-- Dynamic field inputs injected here -->
+        </div>
+      </section>
+
+      <!-- Search & Replace -->
+      <section class="sidebar-section">
+        <div class="section-title">
+          <span>Find & Replace</span>
+        </div>
+        <div class="find-replace-box">
+          <div class="input-row">
+            <input type="text" id="find-input" class="input-text" placeholder="Find text..." />
+          </div>
+          <div class="input-row">
+            <input type="text" id="replace-input" class="input-text" placeholder="Replace with..." />
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
+            <label style="font-size:0.72rem; color:var(--text-secondary); display:flex; align-items:center; gap:4px; cursor:pointer;">
+              <input type="checkbox" id="match-case-check" /> Match Case
+            </label>
+            <button class="btn btn-primary" id="btn-replace-all" style="padding:4px 10px; font-size:0.75rem;">Replace All</button>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- CENTER PANEL: Original PDF View -->
+    <section class="panel-column" id="original-panel-col">
+      <div class="panel-toolbar">
+        <div class="panel-title">
+          <span>👁️</span> Original PDF Preview
+        </div>
+        <div class="panel-controls">
+          <div class="page-nav-group" id="page-nav-group">
+            <button class="btn btn-icon" id="btn-prev-page" title="Previous Page">◀</button>
+            <span class="page-nav-label" id="page-nav-label">Page 1 / 1</span>
+            <button class="btn btn-icon" id="btn-next-page" title="Next Page">▶</button>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-container" id="original-container">
+        <!-- Original rendered page images injected here -->
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Reconstructed Editable Document -->
+    <section class="panel-column reconstructed-panel" id="reconstructed-panel-col">
+      <div class="panel-toolbar">
+        <div class="panel-title">
+          <span>✍️</span> Reconstructed Editable Document
+        </div>
+        <div class="panel-controls">
+          <button class="btn btn-icon" id="btn-zoom-out" title="Zoom Out" style="padding:2px 8px;">−</button>
+          <span class="zoom-label" id="zoom-level-label">100%</span>
+          <button class="btn btn-icon" id="btn-zoom-in" title="Zoom In" style="padding:2px 8px;">+</button>
+          <button class="btn btn-icon" id="btn-zoom-reset" title="Reset Zoom" style="padding:2px 8px; font-size:0.7rem;">Reset</button>
+        </div>
+      </div>
+      <div class="scroll-container" id="reconstructed-container">
+        <!-- Pixel-accurate contenteditable HTML pages injected here -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Loading State Modal -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Analyzing Legal Document...</div>
+  </div>
+
+  <!-- Interactive Image Crop & Align Modal -->
+  <div class="crop-modal-overlay" id="crop-modal-overlay">
+    <div class="crop-modal-card">
+      <div class="crop-modal-header">
+        <div class="crop-header-left">
+          <div class="crop-title">
+            <span class="crop-icon">✂️</span>
+            <span>Crop & Align Legal Document</span>
+          </div>
+          <span class="crop-file-badge" id="crop-file-name">image.png</span>
+        </div>
+        <div class="crop-info-pill" id="crop-dimensions-label">0 × 0 px</div>
+      </div>
+
+      <div class="crop-toolbar">
+        <div class="crop-toolbar-group">
+          <span class="crop-toolbar-label">Ratio:</span>
+          <button class="crop-tool-btn active" data-ratio="free" id="ratio-free">Free</button>
+          <button class="crop-tool-btn" data-ratio="a4" id="ratio-a4">A4 / Legal (1:1.41)</button>
+          <button class="crop-tool-btn" data-ratio="1:1" id="ratio-1-1">1:1</button>
+          <button class="crop-tool-btn" data-ratio="4:3" id="ratio-4-3">4:3</button>
+        </div>
+        <div class="crop-toolbar-group">
+          <button class="crop-tool-btn" id="btn-crop-rotate-left" title="Rotate Counter-Clockwise">↺ 90°</button>
+          <button class="crop-tool-btn" id="btn-crop-rotate" title="Rotate Clockwise">↻ 90°</button>
+          <button class="crop-tool-btn" id="btn-crop-reset" title="Reset crop to full image">⟲ Reset</button>
+        </div>
+      </div>
+
+      <div class="crop-stage-container" id="crop-stage-container">
+        <div class="crop-workspace" id="crop-workspace">
+          <img id="crop-source-img" class="crop-source-img" alt="Source Document" />
+          <div class="crop-mask-overlay" id="crop-mask-overlay"></div>
+          <div class="crop-selection-box" id="crop-selection-box">
+            <div class="crop-grid-lines"></div>
+            <!-- 8 Resizing handles -->
+            <div class="crop-handle handle-nw" data-handle="nw"></div>
+            <div class="crop-handle handle-n" data-handle="n"></div>
+            <div class="crop-handle handle-ne" data-handle="ne"></div>
+            <div class="crop-handle handle-e" data-handle="e"></div>
+            <div class="crop-handle handle-se" data-handle="se"></div>
+            <div class="crop-handle handle-s" data-handle="s"></div>
+            <div class="crop-handle handle-sw" data-handle="sw"></div>
+            <div class="crop-handle handle-w" data-handle="w"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="crop-modal-footer">
+        <div class="crop-footer-left">
+          <label class="crop-toggle-label" title="Filters out blue/purple/red pen ink and retains only the original printed template layout & table grid">
+            <input type="checkbox" id="crop-ignore-pen" checked />
+            <span>✍️ Ignore Pen / Handwritten Ink (Extract Blank Template)</span>
+          </label>
+        </div>
+        <div class="crop-footer-right">
+          <button class="btn btn-secondary" id="btn-crop-cancel">Cancel</button>
+          <button class="btn btn-secondary" id="btn-crop-skip">Skip Crop</button>
+          <button class="btn btn-primary" id="btn-crop-apply">
+            <span>✂️</span> Apply Crop & Reconstruct
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=2.1"></script>
+</body>
+</html>
+
